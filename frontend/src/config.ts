@@ -17,7 +17,13 @@ declare global {
   }
 }
 
+// Deliberately checked against `undefined` rather than `||`: an empty
+// string is a valid, intentional runtime value (call the API on the same
+// origin as the page, via Nginx's reverse proxy) and must not fall through
+// to the localhost fallback below just because it's falsy.
+const runtimeBackendUrl = window.__ENV__?.VITE_BACKEND_URL;
+
 export const BACKEND_URL: string =
-  window.__ENV__?.VITE_BACKEND_URL ||
-  import.meta.env.VITE_BACKEND_URL ||
-  "http://localhost:8000";
+  runtimeBackendUrl !== undefined
+    ? runtimeBackendUrl
+    : import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";

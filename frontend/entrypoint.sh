@@ -4,7 +4,11 @@
 # (docker-compose, Kubernetes ConfigMap, etc.) without rebuilding the image.
 set -e
 
-: "${VITE_BACKEND_URL:=http://localhost:8000}"
+# Deliberately using "=" rather than ":=" - an explicitly empty string is a
+# valid, intentional value (same-origin API calls via a reverse proxy) and
+# must not be overwritten just because it's empty; only a genuinely unset
+# variable should fall back to the default.
+: "${VITE_BACKEND_URL=http://localhost:8000}"
 
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__ENV__ = {

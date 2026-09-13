@@ -9,6 +9,12 @@ sysctl -w net.ipv4.ip_forward=1
 echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 
 dnf install -y iptables
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+# Detect the real primary network interface name instead of assuming
+# "eth0" - modern instance types (e.g. t3) rename it to something like
+# "ens5" via the ENA driver, which silently breaks a hardcoded rule.
+IFACE=$(ip -o -4 route show to default | awk '{print $5}' | head -n1)
+
+iptables -t nat -A POSTROUTING -o "$IFACE" -j MASQUERADE
 iptables -A FORWARD -j ACCEPT
 iptables-save > /etc/sysconfig/iptables

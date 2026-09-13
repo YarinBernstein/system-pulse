@@ -54,12 +54,13 @@ resource "aws_iam_instance_profile" "backend" {
 # free-tier-eligible server doing the same job.
 # -----------------------------------------------------------------------
 resource "aws_instance" "nat" {
-  ami                    = data.aws_ssm_parameter.al2023_ami.value
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.nat.id]
-  source_dest_check      = false # required for any instance that routes traffic on behalf of others
-  user_data              = file("${path.module}/scripts/nat-init.sh")
+  ami                         = data.aws_ssm_parameter.al2023_ami.value
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.public.id
+  vpc_security_group_ids      = [aws_security_group.nat.id]
+  source_dest_check           = false # required for any instance that routes traffic on behalf of others
+  user_data                   = file("${path.module}/scripts/nat-init.sh")
+  user_data_replace_on_change = true # a changed boot script should always mean a fresh instance
 
   tags = { Name = "${var.project_name}-nat" }
 }
@@ -74,11 +75,12 @@ resource "aws_route" "private_default" {
 # Redis: private subnet, official image, nothing custom to build.
 # -----------------------------------------------------------------------
 resource "aws_instance" "redis" {
-  ami                    = data.aws_ssm_parameter.al2023_ami.value
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.private.id
-  vpc_security_group_ids = [aws_security_group.redis.id]
-  user_data              = file("${path.module}/scripts/redis-init.sh")
+  ami                         = data.aws_ssm_parameter.al2023_ami.value
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.private.id
+  vpc_security_group_ids      = [aws_security_group.redis.id]
+  user_data                   = file("${path.module}/scripts/redis-init.sh")
+  user_data_replace_on_change = true
 
   depends_on = [aws_route.private_default]
 
@@ -101,6 +103,7 @@ resource "aws_instance" "backend" {
     redis_private_ip = aws_instance.redis.private_ip
     aws_region       = var.aws_region
   })
+  user_data_replace_on_change = true
 
   depends_on = [aws_route.private_default]
 
@@ -124,6 +127,7 @@ resource "aws_instance" "frontend" {
       backend_private_ip = aws_instance.backend.private_ip
     })
   })
+  user_data_replace_on_change = true
 
   tags = { Name = "${var.project_name}-frontend" }
 }

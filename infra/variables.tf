@@ -15,9 +15,9 @@ variable "project_name" {
 }
 
 variable "instance_type" {
-  description = "EC2 size for every server. t2.micro is the classic AWS free-tier type in us-east-1 - check Billing > Free Tier in your own account to confirm eligibility."
+  description = "EC2 size for every server. t3.micro is this account's free-tier-eligible type (confirmed via `aws ec2 describe-instance-types --filters Name=free-tier-eligible,Values=true`) - re-check that command if you use a different AWS account."
   type        = string
-  default     = "t2.micro"
+  default     = "t3.micro"
 }
 
 variable "github_repo_url" {
