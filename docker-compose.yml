@@ -1,0 +1,62 @@
+networks:
+  # A single custom bridge network so all three services can resolve each
+  # other by container/service name (Docker's embedded DNS). This mirrors
+  # how Service DNS works in Kubernetes, keeping the demo topology honest.
+  system-pulse-net:
+    driver: bridge
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: system-pulse-redis
+    networks:
+      - system-pulse-net
+    ports:
+      # Exposed to the host only for convenience/debugging (e.g. redis-cli).
+      # Not required for the frontend/backend to talk to each other.
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: system-pulse-backend
+    networks:
+      - system-pulse-net
+    environment:
+      SERVICE_NAME: system-pulse-backend
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 8000
+      REDIS_HOST: redis           # resolves via Docker DNS to the redis service
+      REDIS_PORT: 6379
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: system-pulse-frontend
+    networks:
+      - system-pulse-net
+    environment:
+      # Consumed by entrypoint.sh at container startup to generate
+      # /config.js — NOT baked into the image at build time.
+      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
