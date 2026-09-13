@@ -15,6 +15,15 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Terraform
+# .terraform.lock.hcl IS committed on purpose (locks provider versions).
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+infra/crash.log
+infra/crash.*.log
+
 # Editors / OS
 .vscode/
 .idea/
