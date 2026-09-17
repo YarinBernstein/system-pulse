@@ -1,0 +1,48 @@
+# Kubernetes' equivalent of the AWS Security Groups: internet -> frontend
+# -> backend -> redis, nothing allowed to skip a step.
+#
+# IMPORTANT CAVEAT: this cluster's default networking plugin (kindnet) does
+# NOT enforce NetworkPolicy resources - Kubernetes will accept this file
+# without error, but every pod can still reach every other pod regardless.
+# This file documents the intended access rules and will take effect the
+# moment a policy-enforcing CNI (e.g. Calico) is installed on the cluster -
+# it's written now so the rules exist, even though they're not "live" yet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-allow-from-frontend-only
+  namespace: system-pulse
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-allow-from-backend-only
+  namespace: system-pulse
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - protocol: TCP
+          port: 6379

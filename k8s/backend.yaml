@@ -1,0 +1,58 @@
+# Backend: built from this repo's backend/ folder (image tag "local" - not
+# pulled from any registry). ClusterIP only, so nothing outside the cluster
+# can reach it directly - the frontend proxies to it, same pattern as AWS.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: system-pulse
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      # Kubernetes auto-injects a legacy env var per Service in the
+      # namespace (e.g. BACKEND_PORT=tcp://10.x.x.x:8000 for the "backend"
+      # Service) - this collided with and overwrote our own BACKEND_PORT
+      # setting and crashed the app. Turning this off is the documented fix
+      # since we use DNS (service names), not env vars, for discovery.
+      enableServiceLinks: false
+      containers:
+        - name: backend
+          image: system-pulse-backend:local
+          imagePullPolicy: IfNotPresent # this image only exists locally, never pull from a registry
+          ports:
+            - containerPort: 8000
+          env:
+            - name: SERVICE_NAME
+              value: system-pulse-backend
+            # "redis" resolves via Kubernetes' own internal DNS to the
+            # Service below - the same idea as Docker Compose service names.
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: CORS_ORIGINS
+              value: "*"
+            - name: LOG_LEVEL
+              value: INFO
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: system-pulse
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
